@@ -1,0 +1,115 @@
+ wget https://www.dropbox.com/s/ehehgr7f97y4sw0/all_anonymized_2015_11_2017_03.csv?dl=0
+ hadoop fs -mkdir /Bigdata
+rjayarani66@bigdata-m:~$ hadoop fs -copyFromLocal cars_dataset /Bigdata/.
+rjayarani66@bigdata-m:~$ hadoop fs -ls /Bigdata/cars_dataset
+
+CREATE DATABASE used_cars_db;
+USE used_cars_db;
+
+CREATE TABLE IF NOT EXISTS used_cars (maker STRING, model STRING, mileage FLOAT, manufacture_year INT, engine_displacement FLOAT, 
+engine_power STRING, body_type STRING, color_slug STRING, stk_year FLOAT, transmission STRING, door_count INT, seat_count INT, 
+fuel_type STRING, date_created DATE, date_last_seen DATE, price_eur FLOAT) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',';
+
+DESCRIBE used_cars;
+
+!hadoop fs -ls /Bigdata/cars_dataset
+LOAD DATA LOCAL INPATH '/home/rjayarani66/cars_dataset' INTO TABLE used_cars;
+
+SELECT * FROM used_cars LIMIT 10;
+
+SELECT COUNT(*) FROM used_cars;
+
+SET hive.cli.print.header=true;
+SELECT maker, model FROM used_cars LIMIT 10;
+
+
+CREATE TABLE IF NOT EXISTS used_cars1 AS 
+SELECT maker, model, mileage, manufacture_year, engine_displacement,engine_power, body_type, color_slug, stk_year,
+transmission, door_count, seat_count, fuel_type, date_created, date_last_seen, price_eur 
+FROM used_cars;
+
+
+INSERT OVERWRITE TABLE used_cars1 
+SELECT case when maker = '' or maker = 'None' THEN NULL ELSE maker END as maker, 
+case when model = '' or model = 'None' THEN NULL ELSE model END as model, 
+case when mileage = '' or mileage = 'None' THEN NULL ELSE mileage END as mileage, 
+case when manufacture_year = '' or manufacture_year = 'None' THEN NULL ELSE manufacture_year END as manufacture_year,
+case when engine_displacement = '' or engine_displacement = 'None' THEN NULL ELSE engine_displacement END as engine_displacement,
+case when engine_power = '' or engine_power = 'None' THEN NULL ELSE engine_power END as engine_power,
+case when body_type = '' or body_type = 'None' THEN NULL ELSE body_type END as body_type,
+case when color_slug = '' or color_slug = 'None' THEN NULL ELSE color_slug END as color_slug, 
+case when stk_year = '' or stk_year = 'None' THEN NULL ELSE stk_year END as stk_year,     
+case when transmission = '' or transmission = 'None' THEN NULL ELSE transmission END as transmission, 
+case when door_count = '' or door_count = 'None' THEN NULL ELSE door_count END as door_count, 
+case when seat_count = '' or seat_count = 'None' THEN NULL ELSE seat_count END as seat_count, 
+case when fuel_type = '' or fuel_type = 'None' THEN NULL ELSE fuel_type END as fuel_type, 
+date_created, date_last_seen, 
+case when price_eur = '' or price_eur = 'None' THEN NULL ELSE price_eur END as price_eur 
+FROM used_cars1;
+
+
+select count(*) from used_cars1 where maker is NULL
+select count(*) from used_cars1 where model is NULL
+select count(*) from used_cars1 where mileage is NULL
+select count(*) from used_cars1 where manufacture_year is NULL
+select count(*) from used_cars1 where engine_displacement is NULL
+select count(*) from used_cars1 where engine_power is NULL
+select count(*) from used_cars1 where body_type is NULL
+select count(*) from used_cars1 where color_slug is NULL
+select count(*) from used_cars1 where stk_year is NULL
+select count(*) from used_cars1 where transmission is NULL
+select count(*) from used_cars1 where door_count is NULL
+select count(*) from used_cars1 where seat_count is NULL
+select count(*) from used_cars1 where fuel_type is NULL
+select count(*) from used_cars1 where date_created is NULL
+select count(*) from used_cars1 where date_last_seen is NULL
+select count(*) from used_cars1 where price_eur is NULL; 
+
+
+SELECT price_eur, count(*) agg(price_eur) 
+FROM used_cars1
+GROUP BY price_eur
+ORDER BY price_eur DESC;
+
+CREATE TABLE IF NOT EXISTS clean_used_cars AS 
+SELECT maker, model, mileage, manufacture_year, engine_displacement,engine_power, body_type, stk_year,
+transmission, door_count, seat_count, date_created, date_last_seen, price_eur  
+FROM used_cars WHERE manufacture_year >= 2000 AND manufacture_year <= 2017
+AND price_eur >= 3000 And price_eur <= 2000000 
+AND maker != '' AND model != '' 
+AND price_eur != 1295.34;
+
+SELECT * FROM clean_used_cars LIMIT 10;
+
+SELECT COUNT(*) FROM clean_used_cars;
+
+SELECT maker, model, AVG(price_eur) avg_price
+FROM clean_used_cars
+GROUP BY maker, model
+ORDER BY avg_price DESC limit 10;
+
+SELECT maker, model, AVG(price_eur) avg_price 
+from clean_used_cars 
+group by maker, model 
+ORDER BY avg_price ASC LIMIT 10;
+
+SELECT maker, model, AVG(price_eur) AS economic_segment_customers
+FROM clean_used_cars 
+GROUP BY maker, model
+HAVING AVG(price_eur) >= 3000 AND AVG(price_eur) < 20000
+ORDER BY economic_segment_customers DESC limit 5; 
+
+SELECT maker, model, AVG(price_eur) AS intermediate_segment_customers
+FROM clean_used_cars 
+GROUP BY maker, model
+HAVING AVG(price_eur) >= 20000 AND AVG(price_eur) < 300000
+ORDER BY intermediate_segment_customers DESC limit 5; 
+
+SELECT maker, model, AVG(price_eur) AS luxury_segment_customers
+FROM clean_used_cars 
+GROUP BY maker, model
+HAVING AVG(price_eur) >= 300000 AND AVG(price_eur) < 2000000
+ORDER BY luxury_segment_customers DESC limit 5;
+  
+
+
